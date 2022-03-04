@@ -1,0 +1,288 @@
+---
+title: "Final Project Step 2"
+author: "Milan Sherman"
+date: "2/20/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(naniar)
+```
+## Overview and Refinement of Questions and Approach
+
+As I dug into my datasets this week and did some more research on baseball metrics that I could generate from this data that would be predictive of winning or losing, I discovered some things that have helped to refine my approach.  This affects my answer to the questions about each of the datasets below, and so I thought it would be important to discuss the shift in my approach before discussing the datasets.
+
+First, I am finding that my data is best suited to generating offensive metrics, i.e, hitting statistics.  The way to win a baseball game is to score more runs than your opponent.  I noted in Step 1 that pitching and/or defensive statistics might simply be the converse of hitting statistics.  While there are statistics related to defensive errors, those are captured in hitting statistics in the form of reaching base on an error.  Furthermore, there are many pitching statistics, but those are generally at the player level.  If we want to know how well a team pitched as a team, and not just one pitcher, we would look at the opposing team's hitting metrics, for example the opposing team's batting average.  One way of thinking about pitching is that the whole point is to suppress the other team's hitting, and thus a team's hitting statistics captures much of the information that might be gained by included pitching or defensive metrics.  Thus, I will focus on offensive metrics and their relationship to winning.
+
+Second, I am finding that in many analyses offensive statistics are generally not related to winning or losing directly, but rather to runs scored.  Obviously, runs scored is correlated with winning, since the team that scores more runs wins the game.  However, it is likely that hitting metrics are more highly correlated with runs scored than with winning or losing, as other factors come in to play when trying to predict winning or losing, the most obvious of which is the number of runs the opposing team scored.  Another advantage of using runs scored as a target variable is that it is numeric, and thus regression models are relevant.  In particular, generating linear models with a variety of offensive metrics could allow for an analysis of which metrics explain the most variation in runs scored.  In addition, we could generate the correlation between these metrics and runs scored.  
+
+Finally, I stumbled upon a little known hitting metric that seems very promising in terms of predicting runs scored.  While researching what some of the fields in one of my datasets represent, I found the following article on Base-Out Percentage [https://nolimitjumper.com/2021/07/16/base-out-percentage-bop/].  I actually found the original article that defines it in 1979 as well [http://research.sabr.org/journals/base-out-precentage#:], which the previous article references.  Base-Out Percentage (BOP) represents the ratio of bases to outs, which is important since the way to win a baseball game is round as many bases as possible before getting three outs. The first article noted above was published less than a year ago, and addresses why this metric has never caught on in baseball, and demonstrates that it is more highly correlated with runs scored than batting average or on-base percentage.  
+
+## My (new) Approach
+
+Given my findings above, I have refined my approach from Step 1.  I still plan to create logistic models that predict winning or losing based on a variety of hitting metrics, but I think it's also important to use them to predict runs scored.  In addition, my approach will be to analyze these metrics at the game level, not at the player level, as winning or losing, as well as runs scored, are game level metrics.  That being said, the same metrics can be generated for individual players, and thus what we discover about the relationship between these metrics and winning/losing or runs scored can be applied at the player level.  For example, if we find that BOP is highly predictive of runs scored or winning, then players with a higher BOP become more valuable to a team.  
+
+Also, for this reason, we are interested in comparing the predictive power of these metrics rather than finding the most accurate model.  Putting all of these metrics into a single model would likely result in a very accurate model, but would not lead to an actionable insight in the sense that we would not know what to prioritize.  If we want to assemble a team with the best chance of winning, as the Oakland A's were trying to do in 2000, we want to know if we should value batting average, slugging percentage, on-base percentage, or base-out percentage.  One of the things that the Oakland A's discovered was that on-base percentage was more important than batting average.  As conventional thinking gave supreme value to batting average at that time, the A's were able to pursue players with higher on-base percentage and lower batting average who were undervalued by other teams, and thus build a winning team on a smaller budget.  
+
+Thus, after cleaning and aggregating my data, these are the metrics that I will generate and relate to runs scored and winning/losing:
+
+1. Batting average
+2. Slugging percentage
+3. On-base percentage
+4. Base-out percentage
+
+Knowing that runs scored and winning/losing are the target variables, and that these are metrics of interest guides my cleaning and transformation of the datasets below.
+
+## Data cleaning and transformation
+
+To import my data, I downloaded the csv files to my local GitHub repository and used read.csv to bring them into the R environment. 
+
+```{r}
+hitting <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/mlbbatting1901-2021.csv")
+game_logs <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/game_logs.csv")
+moneyball <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/baseball.csv")
+
+```
+# Hitting dataset
+
+Looking at the summary, it appears that there are NA's but only in fields where they are expected.  For example, CS stands for caught stealing, and this field has over 477k NA's because a player can only be caught stealing if they attempt to steal a base.  If they did not attempt to steal in a given game, they are assigned NA for this metric. 
+
+
+In this dataset, each row contains the hitting statistics for one player for one game.  As I noted above, I need the raw hitting statistics at the game and team level,  therefore I will need to aggregate the individual players' statistics up to the team level for each game.  To do that, I will need to create a unique game/team identifier, so that I can aggregate to that level.  In most cases knowing the date of the game and the teams who played will be sufficient, but sometimes two teams play two (or more) games in one day, so I will also include the result as part of the identifier.  I am not sure if two teams ever played two games in a single day with the exact same final score and the same team winning both games, so I will need to check for that. 
+
+I will also need to isolate the game outcome, as that is one of my target variables.  To do this, I will need to extract the game outcome from the Result field as that field has both the outcome and the score, for example "L 7-12" means that the team that player was on lost 7 to 12.  So I will need to create a field that has only the game outcome, W or L.
+
+Once I have aggregated by game and by team, I will need to use the raw hitting statistics, such as at-bats and hits, to create the metrics identified above. For example, batting average is the number of hits divided by the number of at-bats.  This will give me team totals and metrics based on those totals for each game, as well as the outcome of that game.  Three more metrics that I calculated as intermediate steps for slugging percentage and base-out percentage:
+
+1. bases: this a the total number of bases from hits in a game
+2. total bases: this is the total number of bases from all sources in a game, including total bases from hits as well as walks, hit by pitch, sacrifice hits, sacrifice flies, and stolen bases
+3. outs: this is the total number of outs from all sources in a game, including outs from at-bats, sacrifice hits, sacrifice flies, caught stealing, and grounded into a double play
+
+I performed these transformations and renamed the dataframe by_game_pct, i.e. by game percentages as I am computing my four metrics of interest at the game/team level.  Looking at this dataset, I noticed in the summary that in one game a team had 79 outs (normally there are 27 outs per team per game, although it is not uncommon for the home team to have only 24 outs as the game is over if they are winning in the middle of the ninth inning as the outcome of the game will not be changed by their batting in the bottom of the ninth inning).  Looking at this game, I noticed that it ended in a tie, and that there were other games that ended in ties.  In the modern era, every game is played until a team wins by means of extra innings.  As I am trying to predict winning or losing, I am removing these games.  
+
+I include the data cleaning steps and the summary and head of the cleaned and aggregated dataframe below:
+
+```{r, warning=FALSE, message =FALSE}
+by_game_pct <- hitting %>% 
+  mutate(date2 = str_replace_all(Date, "-", ""),
+         result1 = str_replace_all(Rslt, " ", ""),
+         result = str_replace_all(result1, "-", ""),
+         outcome = substr(Rslt, 1, 1),
+         game_team_id = paste0(date2, Tm, Opp, result)) %>% 
+  filter(outcome != 'T') %>% 
+  group_by(game_team_id, Date, Tm, Opp, outcome) %>% 
+  summarise(PA = sum(PA),
+            AB = sum(AB),
+            H = sum(H),
+            R = sum(R),
+            B2 = sum(X2B),
+            B3 = sum(X3B),
+            HR = sum(HR),
+            B1 = H - (B2 + B3 + HR),
+            RBI = sum(RBI),
+            BB = sum(BB),
+            SO = sum(SO),
+            HBP = sum(HBP),
+            SH = sum(SH),
+            SF = sum(SF, na.rm = T),
+            GDP = sum(GDP, na.rm = T),
+            SB = sum(SB),
+            CS = sum(CS, na.rm = T),
+            bases = B1 + 2*B2 + 3*B3 + 4*HR, 
+            total_bases = bases + BB + HBP + SH + SF + SB,
+            outs = (AB - H) + SH + SF + CS + GDP) %>% 
+  mutate(BA = H/AB,
+         Slug = bases/AB,
+         OBP = (H + BB + HBP)/(AB + BB + HBP + SF),
+         BOP = total_bases/outs)
+
+summary(by_game_pct)
+head(by_game_pct)
+
+```
+
+# Baseball Game Logs
+
+Looking at the field explanation sheet for this dataset, I found that the number of game for a team in a given day is one of the fields, i.e., "0" indicates a single game for a team on a given day, a "1" indicates the first game of a doubleheader, and so on.   Thus, a uniqe game id can be created from the date and the game number in this dataset.  I also found some games include only partial or derived information, and that there is a field that indicates such, which I will use to filter out any games without complete information (there are about 31k out of 171k). Furthermore, some games were forfeited, and I will exclude those as well (there are only about 150).
+
+This dataset has all the information for one game in a single row, including all of the hitting statistics for both the home and away team.  As I am interested in metrics at the game and team level, I will need to pivot this data to create two rows from each row for each game, one for each team.  Furthermore, there are 161 fields, many of which are not related to a team's offensive performance.  In addition to the date and number of game, the fields I will need are team name, game outcome, plate appearances, at-bats, hits, singles, doubles, triples, home runs, sacrifice hits, sacrifice flies, walks, hit-by-pitch, strikeouts, stolen bases, caught stealing, grounded into a double play, and left on base, for both the home and visiting teams.  After trimming the dataframe to these fields, I will pivot it to create a row for each game and team combination and add the metrics identified above (the same that I created with the hitting dataset).
+
+After performing the above transformations I noticed that a few fields (doubles, triples, home runs, sacrifice flies, walks, stolen bases, caught stealing, and ground into a double play) inlucded values of -1.  As it's not possible to have negative quantities of these metrics, I did some research and found that they likely refer to NA values, but were not coded as NA as that was reserved for games with missing information for all of the metrics.  I converted these to NA so that the metrics that include them are not skewed by the inclusion of a negative number in the computation. For example, I had negative values for slugging percentage and base-out percentage due to negative values in the raw metrics that they are based on.  In the final dataframe, this has caused over 46k NAs for base-out percentage, over 10k NAs for on-base percentage, and 138 Na for slugging percentage.  But given that my dataset has over 281k rows, there is still a large enough sample to determine the relationship between these metrics and runs scored and winning/losing.
+
+I include the data cleaning steps and a summary and head of the cleaned and aggregated dataframe below:
+
+
+```{r, warning=FALSE, message = FALSE}
+game_log <-  game_logs %>% 
+  filter(acquisition_info == 'Y' & forefeit == '') %>% 
+  mutate(date2 = str_replace_all(date, "-", ""),
+         game_id = paste0(date2, number_of_game)) %>% 
+  dplyr::select(game_id,
+                date,
+                v_name,
+                v_score,
+                v_at_bats,
+                v_hits,
+                v_doubles,
+                v_triples,
+                v_homeruns,
+                v_rbi,
+                v_sacrifice_hits,
+                v_sacrifice_flies,
+                v_hit_by_pitch,
+                v_walks,
+                v_stolen_bases,
+                v_caught_stealing,
+                v_grounded_into_double,
+                h_name,
+                h_score,
+                h_at_bats,
+                h_hits,
+                h_doubles,
+                h_triples,
+                h_homeruns,
+                h_rbi,
+                h_sacrifice_hits,
+                h_sacrifice_flies,
+                h_hit_by_pitch,
+                h_walks,
+                h_stolen_bases,
+                h_caught_stealing,
+                h_grounded_into_double) 
+
+
+visitor <- game_log %>% 
+  dplyr::select(game_id,
+                date,
+                v_name,
+                v_score,
+                v_at_bats,
+                v_hits,
+                v_doubles,
+                v_triples,
+                v_homeruns,
+                v_rbi,
+                v_sacrifice_hits,
+                v_sacrifice_flies,
+                v_hit_by_pitch,
+                v_walks,
+                v_stolen_bases,
+                v_caught_stealing,
+                v_grounded_into_double) %>% 
+  rename(team = v_name,
+                R = v_score,
+                AB = v_at_bats,
+                H = v_hits,
+                B2 = v_doubles,
+                B3 = v_triples,
+                HR= v_homeruns,
+                RBI= v_rbi,
+                SH = v_sacrifice_hits,
+                SF = v_sacrifice_flies,
+                HBP = v_hit_by_pitch,
+                BB= v_walks,
+                SB = v_stolen_bases,
+                CS = v_caught_stealing,
+                GDP = v_grounded_into_double) %>% 
+  mutate(B1 = H - (B2 + B3 + HR))
+
+visitor <- visitor %>% 
+  naniar::replace_with_na(replace = list(CS = -1)) %>%
+  naniar::replace_with_na(replace = list(GDP = -1)) %>% 
+  naniar::replace_with_na(replace = list(B2 = -1)) %>% 
+  naniar::replace_with_na(replace = list(B3 = -1)) %>% 
+  naniar::replace_with_na(replace = list(HR = -1)) %>% 
+  naniar::replace_with_na(replace = list(RBI = -1)) %>% 
+  naniar::replace_with_na(replace = list(SF = -1)) %>% 
+  naniar::replace_with_na(replace = list(BB = -1)) %>% 
+  naniar::replace_with_na(replace = list(SB = -1))
+
+home <- game_log %>% 
+  dplyr::select(game_id,
+                date,
+                h_name,
+                h_score,
+                h_at_bats,
+                h_hits,
+                h_doubles,
+                h_triples,
+                h_homeruns,
+                h_rbi,
+                h_sacrifice_hits,
+                h_sacrifice_flies,
+                h_hit_by_pitch,
+                h_walks,
+                h_stolen_bases,
+                h_caught_stealing,
+                h_grounded_into_double) %>% 
+    rename(team = h_name,
+                R = h_score,
+                AB = h_at_bats,
+                H = h_hits,
+                B2 = h_doubles,
+                B3 = h_triples,
+                HR= h_homeruns,
+                RBI= h_rbi,
+                SH = h_sacrifice_hits,
+                SF = h_sacrifice_flies,
+                HBP = h_hit_by_pitch,
+                BB= h_walks,
+                SB = h_stolen_bases,
+                CS = h_caught_stealing,
+                GDP = h_grounded_into_double) %>% 
+  mutate(B1 = H - (B2 + B3 + HR))
+
+home <- home %>% 
+  naniar::replace_with_na(replace = list(CS = -1)) %>%
+  naniar::replace_with_na(replace = list(GDP = -1)) %>% 
+  naniar::replace_with_na(replace = list(B2 = -1)) %>% 
+  naniar::replace_with_na(replace = list(B3 = -1)) %>% 
+  naniar::replace_with_na(replace = list(HR = -1)) %>% 
+  naniar::replace_with_na(replace = list(RBI = -1)) %>% 
+  naniar::replace_with_na(replace = list(SF = -1)) %>% 
+  naniar::replace_with_na(replace = list(BB = -1)) %>% 
+  naniar::replace_with_na(replace = list(SB = -1))
+
+
+all_games <- bind_rows(visitor, home) %>% 
+  mutate(bases = B1 + 2*B2 + 3*B3 + 4*HR, 
+         total_bases = bases + BB + HBP + SH + SF + SB,
+         outs = (AB - H) + SH + SF + CS + GDP,
+         BA = H/AB,
+         Slug = bases/AB,
+         OBP = (H + BB + HBP)/(AB + BB + HBP + SF),
+         BOP = total_bases/outs)
+
+summary(all_games)
+head(all_games)
+```
+
+# Moneyball Dataset
+
+This dataset is already aggregated and much more concise than the other two.  This dataset is aggregated to the team level for a season, not a game, i.e each row represents a team's offensive statistics for a season, and whether or not they made the playoffs that year.  I think the questions that I am posing are still relevant, but the answers will at the level of a season not a game.  I did a little research and found that the question that the Oakland A's were trying to answer was slightly different than mine, which is why the data is aggregated to this level.  Instead of asking about the outcome of a game, or runs scored, they were interested in knowing which metrics were most predictive of making the playoffs, as that was their goal.  They recognized that over 162 games in a normal baseball season, those metrics were highly likely to predict winning enough games to make the playoffs, i.e., the sample size was large enough that short term anomolous behavior would be mitigated, and thus that's what they focused on.  
+
+Looking at the page for this dataset on Kaggle, it is a clean dataset with no missing values.  There are two fields which are only relevant to teams that made the playoffs that year, their rank at the end of the season (going in to the playoffs) and their rank after the playoffs.  Because the data is already cleaned and aggregated, there is not much to do with this dataset besides creating some models relating the metrics that they included with runs scored and winning percentage.  The offensive statistics that are included in the dataset are on-base percentage, slugging percentage, and batting average. 
+
+I include a summary and head of the dataframe below:
+
+```{r, warning=FALSE, message = FALSE}
+summary(moneyball)
+head(moneyball)
+```
+
+## Plots and tables
+
+For my first two datasets aggregated by game by team, I plan to include scatterplots of runs scored with each of the four metrics that should correlate with runs scored: batting average, slugging percentage, on-base percentage, and base-out percentage.  This will give me an idea of how these metrics are correlated to runs scored, and I plan to follow up with finding those correlations.  I will also create a one-variable linear regression model with each of these metrics to further explore the predictive power of each of these metrics.
+
+For winning and losing, I will generate plots of the distribution of each of these metrics.  For example, I will look at the distribution of batting averages associated with games in which the team won, and compare that with the distribution of batting averages associated with games in which the team lost.  I will follow up with creating a logistic regression model with each of these metrics separately to get a sense for which metric is most predictve of winning or losing.  Given that half of my observations wins and half are losses, a model that has a greater accuracy than 50% will suggest the predictive power of that metric.
+
+For the moneyball dataset, I will look at each of these metrics as they relate to winning percentage for a season.  Scatterplots, correlations, and one-variable linear models will be used to measure the predictive power of each metric included in the dataset (batting average, slugging percentage, and on-base percentage) with reference to winning percentage.  
+
+## Question for future steps
+
+One question is whether there are other hitting metrics that I could compute from my data that would be predictive to runs scored or winning/losing.  I will do a bit more research to answer that question.  Other questions that I anticipate are what the results of my plots and models will be, and how to interpret them.  I am looking forward to continuing with this analysis and curious to see the results.
+
+

@@ -1,0 +1,237 @@
+---
+title: "Housing Regression Analysis"
+author: "Milan Sherman"
+date: "1/31/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(dplyr)
+library(tidyverse)
+library(janitor)
+library(lmtest)
+library(regclass)
+
+options(scipen = 999)
+
+```
+
+# Data Transformations
+
+I am performing the following transformations:
+
+* Creating a single variable for the number of bathrooms by combining full, 3/4, and half baths
+* Extracting the year of sale from date sold and make it a numeric variable (vs. date)
+* Create a variable for the age of the home at the time of sale (year sold - year built)
+* Make zip code a factor for the regression model. 
+* Exclude the 98059 zip code as I believe that zip code will be correlated with sales price and this zip code only has one sale and thus introduces noise into the model
+
+```{r}
+housing <- readxl::read_excel("C:/Users/misherman/DS-520/dsc520/data/week-7-housing.xlsx") %>% 
+  clean_names()
+
+housing <- housing %>% 
+  dplyr::filter(zip5 != '98059') %>% 
+  mutate(bathrooms = bath_full_count + 0.5*bath_half_count + .75*bath_3qtr_count, 
+         year_sold = sale_date)
+
+housing$year_sold <- format(housing$year_sold, format = '%Y')
+housing$year_sold <- as.numeric(housing$year_sold)
+housing$zip5 <- as.factor(housing$zip5)
+
+housing <- housing %>% 
+  mutate(home_age = year_sold - year_built)
+
+```
+
+# Regression models and predictors
+Below I create two regression models, one with only sale price and lot size, and a multiple regression model with lot size, living space, number of bedrooms, number of bathrooms, year sold, the age of the home, and the zip code.
+
+* In addition to the size of the lot, the amount of living space and the number of bedrooms and bathrooms will also affect the price
+* Home prices tend to change over time, so knowing when the home was sold should help to predict its price
+* How old or new the home is will also affect the price, which is why I created home_age
+* The three most important factors in real estate are location, location, and location, so I'm including the zip code as a predictor of price.  Although all these homes are in the same area, I suspect some zip codes are more desirable to live in than others.  Note that above I removed the zip code 98059 from the data in the model as only one home was sold in this zip code and thus could add noise to our model
+```{r}
+lot_lm <- lm(sale_price ~ sq_ft_lot, data = housing)
+               
+
+# multiple regression model
+all_lm <- lm(sale_price ~ sq_ft_lot + 
+               square_feet_total_living + 
+               bedrooms +
+               bathrooms +
+               year_sold + 
+               home_age +
+               zip5, 
+             data = housing)
+
+
+```
+
+We examine the model outputs
+
+```{r}
+summary(lot_lm)
+```
+
+```{r}
+summary(all_lm)
+```
+## Comparing models 
+* R squared for the two variable model is 0.01435 and the adjusted R squared is 0.01428
+* R squared for the multiple predictor model is 0.2244 and the adjusted R squared is 0.2240
+* This indicates that the model with multiple predictors explains more than 20% more of the variance in sale price than lot size alone
+
+### Explanation of the beta values
+* The intercept doesn't have much meaning in this context as it gives the sale price for a home given that all the predictors are 0 in zip code 98052, i.e. a home with 0 living space and 0 lot size
+
+### Lot size
+* The lot size coefficient of 0.39 means that for every increase of 1 square foot in the lot size, the price
+of the home increase by 39 cents.  While this doesn't seem like much, many of the lots are quite large
+
+### Living space
+* The living space coefficient is about 160 meaning that for every additional square foot of living space, the price of the home increases by $160
+
+### Bedrooms
+* Counter intuitively (at least to me), the number of bedrooms is negatively correlated with the sale price, i.e. for each additional bedroom, the price of the home decreases by over $17k.  I suspect that this means that there are some non-residential properties in the data that sell for a lot of money
+
+### Bathrooms
+* The number of bathrooms is also negatively correlated with the sale price, with the sale price decreasing by about $2000 for each addtional bathroom.  This further supports my hypothesis that this dataset contains non-residential properties
+
+### Sale year
+* The sale year coefficient is 5370, which means that each year the price of a home increases by about $5370 on average
+
+### Home age
+* The home age coefficient is about -3637, meaning that for each year older a home is the price decreases by $3637
+
+### Zip Codes
+* As the zip code variable is categorical, we interpret the coefficients relative to the intercept. There are three unique zip codes (after removing one that had only one sale): 98052, 98053, and 98074. As 98074 and 98053 are listed in the output, we can infer that zip code 98052 is part of the default model, i.e. the intercept.  Thus, we interpret the beta coefficients for zip code 98053 and 98074 relative to 98052
+
+### Zip Code 98053
+* This zip code is negatively correlated with sale price, with homes being sold in this zip code selling for $42k less than in zip code 98052, on average
+
+### Zip Code 98074
+* This zip code is positively correlated with sale price, with homes being sold in this zip code selling for $67k more than in zip code 98052, on average
+* NOTE: all predictors are significant in the model with the exception of bathrooms and 98074 zip code
+
+## Confidence Intervals
+```{r}
+confint(all_lm)
+```
+
+In general, the smaller the confidence interval the better (relative to the estimate). So, for example, the interval for sq_ft_lot is very small, but so is the estimate (0.39). Also in general, if the confidence interval crosses 0, that suggests that a predictor is not very good, which is the case with bathrooms and zip code 98074
+
+## ANOVA
+```{r}
+anova(lot_lm, all_lm)
+
+```
+The ANOVA has an F value of over 500, and thus the multiple regression model is significantly better than the two variable model.
+
+In addition to comparing the two-variable and multiple regression model, I am going to create another multiple regression model without zip code to see if the inclusion of zip code makes the model better or not, given that not all levels of zip code are significant to the model. Furthermore, I will remove bathrooms from the model as it is not a significant predictor.
+
+```{r}
+no_zip_lm <-  lm(sale_price ~ sq_ft_lot + 
+                   square_feet_total_living + 
+                   bedrooms +
+                   year_sold +
+                   home_age,
+                 data = housing)
+
+summary(no_zip_lm)
+
+```
+While the R squared value is slightly lower (by 0.0022), we check this multiple regression model against the original with an ANOVA
+
+```{r}
+anova(no_zip_lm, all_lm)
+
+```
+It appears that the inclusion of zip code significantly improves the model, so I will keep it in the model
+
+# Model Diagnostics
+I add residuals, standardized residuals, studentized residuals, Cook's distance, dfbeta, diffit, leverage, and covariance ratios from the model to the dataframe
+```{r}
+housing <- housing %>% 
+  mutate(resid = resid(all_lm),
+         stz.r = rstandard(all_lm),
+         stu.r = rstudent(all_lm),
+         cooks = cooks.distance(all_lm),
+         dfbeta = dfbeta(all_lm),
+         diffit = dffits(all_lm),
+         leverage = hatvalues(all_lm),
+         cov.ratios = covratio(all_lm))
+
+```
+## Residuals
+To identify the cases which have large residuals, I subset the above dataframe by filtering on the standardized residual field
+```{r}
+res.lg <- housing %>% 
+  select(sale_price,
+         sq_ft_lot, 
+         square_feet_total_living, 
+         bedrooms,
+         year_sold,
+         home_age, 
+         stz.r) %>% 
+  filter(stz.r > 2 | stz.r < -2) %>% 
+  mutate(abs_stz = abs(stz.r))
+
+```
+
+There are a total of 333 cases (2.6%) with residuals greater than 2 (in absolute value), which is less than 5% of the sample. However, 243 cases have a residual greater than 2.58, which is 1.9%, and there are 197 cases where the standardized residuals are greater than 3.3 (in absolute value).  
+
+## Leverage
+Below I create the upper bound for the recommended leverage limits, and check to see how many observations above this number
+```{r, echo=TRUE}
+lev_limit <- 3*6/nrow(housing)
+housing %>% filter(leverage > lev_limit) %>% summarise(n())
+
+```
+There are 573 cases with a leverage value above the recommended limit of 3 times the average 
+
+## Covariance Ratios
+Below I create the bounds for the recommended covariance ratios, and check to see how many observations fall outside this limits
+```{r, echo=TRUE}
+cov_ratio_low <- 1 - lev_limit 
+cov_ratio_high <- 1 + lev_limit 
+housing %>% filter(cov.ratios > cov_ratio_high | cov.ratios < cov_ratio_low) %>% summarise(n())
+
+```
+
+There are 1687 cases where the covariance ratio is outside of the recommended limits
+
+## Assumption of independence of residuals
+Testing the assumption of independence of residuals
+```{r, echo=TRUE}
+dwtest(all_lm)
+
+```
+It appears that there is a very low probability that the residuals are uncorrelated
+
+## Assumption of No Multicollinearity
+Testing the assumption of no multicollinearity
+```{r, echo=TRUE}
+vif <- VIF(all_lm)
+1/vif
+mean(vif)
+```
+There are no predictors with a VIF greater than 2 or tolerance less than 0.5, and the mean VIF is 1.4, all suggesting that the predictors have a low level of multicollinearity
+
+## Plotting residuals
+```{r}
+plot(all_lm)
+
+```
+The plot of fitted values vs. residuals displays a fanning out pattern that suggests heteroscedasticity , i.e. a  violation of the assumption of homogeneity of variance
+Furthermore, the Q-Q plot and the histogram of the studentized residuals (below) indicate that the residuals are not normally distributed, but positively skewed
+
+```{r}
+hist(housing$stu.r)
+
+```
+
+# Conclusion
+Due to the violation of the assumptions of homogeneity of variance, the independence of residuals, and residuals being normally distributed, it seems that this model is not unbiased, i.e., we would have little confidence using it to make out of sample predictions

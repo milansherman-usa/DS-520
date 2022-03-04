@@ -1,0 +1,89 @@
+---
+title: "Clustering Analysis"
+author: "Milan Sherman"
+date: "2/22/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(class)
+library(factoextra)
+
+```
+
+## K Nearest Neighbor with Binary Data
+
+Import and visualize the data
+
+```{r}
+bin_data <- read.csv("C:/Users/misherman/DS-520/dsc520/data/binary-classifier-data.csv")
+bin_data$label <- as.factor(bin_data$label)
+
+ggplot(bin_data, aes(x = x,
+                     y = y,
+                     color = label)) +
+  geom_point()+
+  labs(title = "Binary Data Distribution",
+       xlab = 'x',
+       ylab = 'y')
+```
+
+# Split data into a train and test set, and define the target and test variable (label)
+
+```{r pressure, echo=FALSE}
+ran <- sample(1:nrow(bin_data), 0.9 * nrow(bin_data)) 
+
+bin_data$x <- scale(bin_data$x)
+bin_data$y <- scale(bin_data$y)
+
+bin_train <- bin_data[ran,]
+bin_test <- bin_data[-ran,]
+
+bin_target_category <- bin_data[ran,1]
+bin_test_category <- bin_data[-ran,1]
+
+
+```
+
+# Create a function to compute accuracy, run the algorithm for all values of k from 1 to 25 and keep results for k = 3, 5, 10, 15, 20, and 25
+```{r}
+# accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+clusters <- numeric(25)
+acc <- numeric(25)
+
+for (k in (1:25)) {
+  clusters[k] <-  k
+  pr <- knn(bin_train,bin_test,cl=bin_target_category,k=k)
+  tab <- table(pr,bin_test_category)
+  accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+  acc[k] <-  accuracy(tab)
+}
+
+acc_data <- as.data.frame(bind_cols(clusters, acc))
+names(acc_data) <- c("clusters", "accuracy")
+
+acc_data <- acc_data %>% 
+  filter(clusters == 3 | clusters == 5 | clusters == 10 | clusters == 15 | clusters == 20 | clusters == 25)
+```
+
+```{r}
+pr <- knn(bin_train,bin_test,cl=bin_target_category,k=20)
+tab <- table(pr,bin_test_category)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+acc <-  accuracy(tab)
+```
+
+# Plot k vs. accuracy
+```{r}
+ggplot(acc_data, aes(x = clusters,
+                     y = accuracy)) +
+  geom_point() +
+  labs(title = "Number of clusters vs. accuracy",
+       subtitle = "Using k nearest neighbors and binary data",
+       xlab = "Clusters",
+       ylab = "Accuracy")
+```
+

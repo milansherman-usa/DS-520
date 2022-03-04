@@ -1,0 +1,105 @@
+---
+title: "Student Survey Corelations Excercie"
+author: "Milan Sherman"
+date: January 24, 2022
+output:
+  
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_knit$set(root.dir = "C:/Users/misherman/DS-520/dsc520")
+
+library(tidyverse)
+```
+## Covariance
+Load the student survey data and generate the covariance matrix
+
+```{r covariance}
+setwd("C:/Users/misherman/DS-520/dsc520")
+student_survey <- read.csv("data/student-survey.csv")
+cov(student_survey)
+```
+
+The purpose generating the covariance is to determine the direction of the relationship between variables, i.e. do the various variables in this dataset increase and decrease together (positive relationship) or does one increase as the other decreases and vice versa (negative relationship). Note that since the covariance of a variable with itself is just variance, which is always positive, then the covariance of a variable with itself is always positive.  For that reason I exclude it from the results below. What these results indicate is
+
+* TimeReading is
+  + Negatively related with TimeTV
+  + Negatively related with Happiness
+  + Negatively related with Gender
+* TimeTV is
+  + Negatively related with TimeReading
+  + Positively related with Happiness
+  + Positively related with Gender
+* Happiness is
+  + Negatively related with TimeReading
+  + Positively related with TimeTV
+  + Positively related with Gender
+* Gender
+  + Negatively related with TimeReading
+  + Positively related with TimeTV
+  + Positively related with Happiness
+
+## Variables and Measurement
+
+Without any explanation of the dataset, I am going to make some inferences based on the numbers in the data.  It appears that TimeReading is measured in hours, TimeTV is measured in minutes, Happiness is measured on a scale from 0 to 100, and Gender is either a 0 or 1 (although we don't which gender is 0 and which is 1).  Changing the scale that the variables are measured on would change the numbers in the covariance matrix, but not the direction.  Given that the magnitude of the numbers in a covariance matrix depend on the scale of the variables, we generally don't assign significance to the magnitude of the numbers anyway, but only whether they are positive or negative.  That is, we could try to put all the variables on the same scale to make the numbers more meaningful, but that is often ill-advised.  For example, while it might make sense to measure both TimeReading and TimeTV using either minutes or hours, it makes no sense to measure Happiness or Gender using either of those units.
+
+## Correlation
+
+Correlation normalizes the covariance in a way that makes the results unit-less by dividing by the standard deviation of each of the variables, and yielding a number between -1 and 1 inclusive.  Thus, the sign of the correlations will be exactly as they were for covariance, i.e., my prediction is the correlations will have the same relationship between the variables as those noted above.  I am using the default method (Pearson's) because this is the only method that works with the cor.test() function which I am using to change the confidence interval, and I'd like to be able to see how the results change based on changing the confidence interval.
+
+```{r correlation}
+cor(student_survey)
+cor.test(student_survey$TimeReading, student_survey$TimeTV)
+cor.test(student_survey$TimeReading, student_survey$TimeTV,  conf.level = .99)
+```
+
+It appears that the interval widens from a 95% to a 99% confidence interval, i.e., from [-0.969, -0.602] to [-0.980, -0.445].  The correlation of -0.883 is in both intervals, however, so the results are the same.  The p-value is 0.0003153 in both cases, which is significant at the .001 level.
+
+Although I chose Pearson's correlation based on it's availability in the cor.test() function, we should also check to see if the data is normally distributed as this is an assumption of Pearson's correlation method.
+
+```{r}
+ggplot(student_survey, aes(sample = TimeReading)) +
+   geom_qq() +
+  geom_qq_line()+
+  labs(title = "TimeReading")
+
+ggplot(student_survey, aes(sample = TimeTV)) +
+   geom_qq() +
+  geom_qq_line()+
+  labs(title = "TimeTV")
+```
+Based on the qq plots, the data do appear to be close enough to normally distributed to justify using Pearson's correlation
+
+## Correlation interpretation
+
+TimeReading is negatively correlated with every other variable in the dataset, but most strongly negatively correlated with TimeTV, meaning that as TimeReading increases, TimeTV decreases and vice versa.  The correlation between TimeReading and Happiness is also negative, meaning that as TimeReading increases, Happiness decreases (and vice versa), but the relationship is weaker than with TimeTV.  The relationship between TimeReading and Gender is much weaker as the correlation is close to 0.  Given the negative relationship between TimeReading and every other variable, it is not surprising that TimeTV is positively correlated with Happiness and Gender.  
+
+One interpretation of these correlations is that as students have very busy schedules, they have to choose between reading/studying and watching TV, and thus these are negatively correlated.  Furthermore, if reading is a part of studying, then time watching TV and time reading may represent relaxing and working, respectively.  Thus, Happiness is positively correlated with TimeTV and negatively correlated with TimeReading as people are generally more happy when they have more time to relax.  To be clear, however, no direction of causality can be inferred from these correlations - these are just my hypotheses based on the correlations.  
+
+## Relationship between TimeReading and TimeTV
+
+We have already seen above that the coefficient of correlation is -0.8830677, indicating a strong negative relationship between these quantities.  We now fit a linear model to obtain the coefficient of determination (note that the coefficient of determination could also be obtained by squaring the correlation coefficient).
+
+```{r linear model, message=FALSE}
+lin_mod <- lm(TimeReading ~ TimeTV, data = student_survey)
+summary(lin_mod)
+```
+The coefficient of determination is 0.7798, which indicates that nearly 78% of the variation in TimeReading is shared by TimeTV.  However, we cannot say that watching more TV causes one to read less, we just know that they are negatively correlated, i.e. as one increases, the other decreases, and that the relationship is strong, i.e., as one increases by 1 unit, the other decreases by 0.88 units.
+
+
+## Partial Correlation
+
+As Happiness is correlated with both TimeTV and TimeReading, I will control for the effect of that variable to see the correlation that is unique to TimeTV and TimeReading without the influence of the Happiness variable.
+```{r partial correlation}
+library(ggm)
+pc <- pcor(c("TimeTV", "TimeReading", "Happiness"), var(student_survey))
+pcor.test(pc, 1, 11)
+print(pc)
+```
+
+We see that even controlling for the effect of Happiness, the correlation between TimeTV and TimeReading is -0.873, which is very close to what it was without controlling for the effect of Happiness, suggesting that the influence of Happiness on this relationship was small.  In addition, we see that this correlation is significant at the .001 level.

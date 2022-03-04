@@ -1,0 +1,86 @@
+---
+title: "Logistic Regression"
+author: "Milan Sherman"
+date: "2/20/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(foreign)
+library(tidyverse)
+library(aod)
+library(janitor)
+```
+
+## Thoracic Surgery dataset
+
+```{r}
+df <- read.arff("C:/Users/misherman/DS-520/dsc520/data/ThoraricSurgery.arff")
+
+mylogit <- glm(Risk1Yr ~ PRE14 + PRE30 + PRE9 + PRE17, data = df, family = "binomial")
+
+summary(mylogit)
+```
+
+I tried all of the variables in the dataset as predictors and found these to be significant in the model, although not at all levels.  For example, the PRE14 variables related to the tumor size, with four sizes OC11 through OC14 from smallest to largest.  OC12 was the only size tumor that was not significant in the model.  The other three variables are True/False responses related to smoking (Pre30), Dyspnoea before survey(Pre9), and Type 2 diabetes mellitus (Pre17).  So the intercept represents a patient with the smallest tumor and false for all these attributes.
+
+```{r}
+wald.test(b = coef(mylogit), Sigma = vcov(mylogit), Terms = 1:4)
+```
+
+Since one of the levels of PRE14 was not significant, I test the overall effect of inclusing PRE14 in the model using the wald.test function and find that it is significant.
+
+Below I exponentiate the coffefficients in order to obtain the odds ratios for each variable. Having the largest sized tumor (PRE140C14) had the biggest impact on whether the patient died.
+```{r}
+exp(coef(mylogit))
+```
+
+Below I add four columns to my dataframe to make predictions and check the accuracy of the model: the model prediction as a probability, the model prediction as 0 or 1 based on the probability, a transformation of the survival variable to 0 or 1, and whether or not the prediction was correct.  Then I compute the percent of correct predictions.
+```{r}
+df$rankP <- predict(mylogit, newdata = df, type = "response")
+
+df <- df  %>% mutate(model_pred = 1*(rankP > .50) + 0,
+                     survive_binary = 1*(Risk1Yr == "T") + 0,
+                     accurate = 1*(model_pred == survive_binary))
+
+head(df)
+
+df %>% summarise(accuracy = sum(accurate)/nrow(df))
+```
+
+My model accurately predicts whether or not a patient survives in 84.4% of cases in the data, if we use 50% as the cutoff. Now I check to see how many actually survived.
+
+```{r}
+df %>% tabyl(Risk1Yr)
+```
+
+Given the skew of the data, I would be more accurate in predicting that every patients survives than in using my model, because in the former case I'd be right 85% of the time while my model was correct only 84.4% of the time. 
+
+## Binary classifier data
+
+```{r}
+bin_data <- read.csv("C:/Users/misherman/DS-520/dsc520/data/binary-classifier-data.csv")
+
+mylogit2 <- glm(label ~ x + y, data = bin_data, family = "binomial")
+
+summary(mylogit2)
+```
+The y variable and the intercept are significant in the model.
+
+```{r}
+bin_data$rankP <- predict(mylogit2, newdata = bin_data, type = "response")
+
+bin_data <- bin_data  %>% mutate(model_pred = 1*(rankP > .50) + 0,
+                     accurate = 1*(model_pred == label))
+
+head(bin_data)
+
+bin_data %>% summarise(accuracy = sum(accurate)/nrow(bin_data))
+```
+The model is 58% accurate.
+
+```{r}
+bin_data %>% tabyl(label)
+```
+Given that the distribution of the data was close to 50-50 between 0's and 1's, our model is better than simply guessing one or other other.
