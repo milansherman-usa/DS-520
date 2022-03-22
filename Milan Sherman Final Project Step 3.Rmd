@@ -27,30 +27,30 @@ My research question evolved and came into focus as I became more familiar with 
 
 # Approach
 
-At the beginning of my project, I had identified batting average, on-base percentage, and slugging percentage as important offensive metrics to explore, but during my research I stumbled upon a lesser known metric with a lot of promise: base-out percentage. The inclusion of this metric made the analysis particularly interesting, as in theory it seemed to capture all of the important information needed to predict runs.  Each of these metrics is defined as follows:
+At the beginning of my project, I had identified batting average, on-base percentage, and slugging percentage as important offensive metrics to explore, but during my research I stumbled upon a lesser known metric with a lot of promise: base-out percentage. The inclusion of this metric made the analysis particularly interesting, as in theory it seemed to capture all of the important information needed to predict runs. The opportunity to determine the predictive power of relatively unknown metric was exciting.  Each of these metrics is defined as follows:
 
 * Batting Average: the proportion of at-bats that result in a hit.  Walks are not considered an at-bat, and therefore are removed from consideration in this metric.
 * Slugging Percentage: a weighted batting average, weighting each hit according to the number of bases it nets.
 * On-base Percentage:  the proportion of plate appearances that resulted in the hitter getting on base
-* Base-out Percentage: the ratio of bases a player nets by any means to the number of outs they generate by any means
+* Base-out Percentage: the ratio of bases a player nets by any means (hits, walks, stolen bases, etc.) to the number of outs they generate by any means (ground out, fly out, caught stealing, etc.)
 
-My approach was to generate these metrics by team by game for my two datasets that are not aggregated, and use them to predict runs scored and winning or losing.  These datasets needed to be cleaned and transformed in order to generate these metrics at that level.  This was a time consuming step, as it required an in-depth understanding of what data was contained in the dataset in order to transform it into the above metrics. The third dataset was already aggregated by team by season. That step done, the analysis was focused on the following steps:
+My approach was to generate these metrics by team by game for the two datasets that are not aggregated, and use them to predict runs scored and/or winning or losing.  These datasets needed to be cleaned and transformed in order to generate these metrics at that level.  This was a time consuming step, as it required an in-depth understanding of what data was contained in the dataset in order to transform it into the above metrics. The third dataset was already aggregated by team by season. That step done, the analysis was focused on the following steps:
 
 1.  Understanding the relationship between each of these metrics and runs scored within each of the datasets via scatterplots and Pearson's correlation coefficient
 2.  Creating a simple linear regression model using runs scored  and each of these hitting metrics
-3.  Creating a simple logistic regression model using win/lose and each of these hitting metrics
+3.  Creating a simple linear regression model using number of wins in a season and each of these hitting metrics.  This analysis was only possible with the third dataset that was aggregated by team by season, as it contained the relevant hitting metrics as well as the number of wins for the season.
 
 To be clear, my question is focused on comparing the predictive power of these metrics rather than finding the most accurate model.  Putting all of these metrics into a single model would likely result in a very accurate model, but would not lead to an actionable insight in the sense that we would not know what to prioritize.  If we want to assemble a team with the best chance of winning we would like to know if we should value batting average, slugging percentage, on-base percentage, or base-out percentage.  For this reason that the analysis considers each of these potential predictors of runs scored and winning/losing separately.
 
 ```{r, echo=FALSE}
-hitting <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/mlbbatting1901-2021.csv")
-game_logs <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/game_logs.csv")
-moneyball <- read.csv("C:/Users/misherman/DS-520/Baseball Datasets/baseball.csv")
+hitting <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/Baseball Datasets/mlbbatting1901-2021.csv")
+game_logs <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/Baseball Datasets/game_logs.csv")
+moneyball <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/Baseball Datasets/Moneyball.csv")
 ```
 
 # Analysis
 
-The analysis is organized by dataset, and finding are synthesized in the implications section.  In this section I analyze the relationship between the number of runs scored and various hitting metrics, including batting average, slugging percentage, on-base percentage, and base-out percentage.  For each metric, I generate a scatterplot, compute the Pearson Correlation Coefficient, and generate a linear model.  Finally, I generate a logistic model using each metric to see how predictive of winning or losing each metric is.
+The analysis is organized by dataset, and finding are synthesized in the implications section.  In this section I analyze the relationship between the number of runs scored and various hitting metrics, including batting average, slugging percentage, on-base percentage, and base-out percentage.  For each metric, I generate a scatterplot, compute the Pearson Correlation Coefficient, and generate a linear model.  For the third dataset, I generate a linear model using each metric to see how predictive of number of wins in a season each metric is.  Before integrating across datasets, I will give a brief summary of the analysis results for each dataset.  
 
 ## Hitting Stats 1901-2021
 
@@ -102,12 +102,11 @@ ggplot(by_game_pct, aes(x = BA,
   geom_jitter() +
   annotate("text", x = 0.1, y = 25, label = paste("Pearson correlation =", batting_average))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of batting average",
+  labs(title = "Runs scored vs. batting average",
        x = "Game Batting Average",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
 
-# win_BA_glm <- glm(outcome ~ BA, data = by_game_pct, family = "binomial" )
 ```
 
 ```{r}
@@ -126,7 +125,7 @@ ggplot(by_game_pct, aes(x = Slug,
   geom_jitter() +
     annotate("text", x = 0.15, y = 25, label = paste("Pearson correlation =", slugging_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of slugging percentage",
+  labs(title = "Runs scored vs. slugging percentage",
        x = "Game Slugging Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -150,7 +149,7 @@ ggplot(by_game_pct, aes(x = OBP,
   geom_jitter() +
   annotate("text", x = 0.1, y = 25, label = paste("Pearson correlation =", on_base_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of on-base percentage",
+  labs(title = "Runs scored vs. on-base percentage",
        x = "Game On-base Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -173,7 +172,7 @@ ggplot(by_game_pct, aes(x = BOP,
   geom_jitter() +
   annotate("text", x = 0.5, y = 25, label = paste("Pearson correlation =", base_out_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of base-out percentage",
+  labs(title = "Runs scored vs. base-out percentage",
        x = "Game Base-out Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -187,7 +186,6 @@ summ(hit_BOP_lm)
 \newpage
 
 ## Summary of Analysis using Hitting Statistics Data
-Before integrating across datasets, I will give a brief summary of the analysis results for each dataset.  
 
 Metric                | Correlation   | R^2   | Slope
 -------               | -----------   | ---   | -----
@@ -198,7 +196,7 @@ Base-out Percentage   | 0.834         | 0.70  | 9.15
 
 For this dataset, base-out percentage seems to be most highly correlated with runs scored, and accounts for 70% of the variability in runs scored.  
 
-As far as the linear models are concerned, each of these metrics is a significant predictor of runs scored, with a p-value of 0 for each.  The slopes given by the linear models need a bit of interpretation.  At face value, for example, the slope for batting average indicates that for every increase in batting average of 1, the number of runs scored is expected to increase by over 28.  In most baseball games, neither team scores more than 10 runs, and many games it's less than 5.  The issue is that in most baseball games a team's batting average is between 0 and .4, and cannot be greater than 1. Thus, it would make more sense to interpret the slope as an increase of 2.8 runs for every 0.1 increase in batting average.  A similar interpretation can be applied to each of the metrics.
+As far as the linear models are concerned, each of these metrics is a significant predictor of runs scored, with a p-value of 0 for each.  The slopes given by the linear models need a bit of interpretation.  At face value, for example, the slope for batting average indicates that for every increase in batting average of 1, the number of runs scored is expected to increase by over 28.  In most baseball games, neither team scores more than 10 runs, and in many games it's less than 5.  The issue is that in most baseball games a team's batting average is between 0 and .4, and cannot be greater than 1. Thus, it would make more sense to interpret the slope as an increase of 2.8 runs for every 0.1 increase in batting average.  A similar interpretation can be applied to each of the metrics.
 
 Furthermore, the difference between these slope also needs interpretation.  These differences are relative to the range of values for the metric.  For example, batting average ranges from 0 to just above 0.6, while base-out percentage ranges from 0 to over 3.  Thus, an increase of 1 in each of these metrics will impact the number of runs scored differently.  It will be more interesting to compare these slopes to what is generated by the linear models for the same metrics in the game logs data.
 
@@ -357,7 +355,7 @@ ggplot(all_games, aes(x = BA,
   geom_jitter() +
   annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", BA_gl))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of batting average",
+  labs(title = "Runs scored vs. batting average",
        x = "Game Batting Average",
        y = "Runs Scored",
        caption = "Source: MLB Game Logs")
@@ -379,7 +377,7 @@ ggplot(all_games, aes(x = Slug,
   geom_jitter() +
   annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", slugging_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of slugging percentage",
+  labs(title = "Runs scored vs. slugging percentage",
        x = "Game slugging percentage",
        y = "Runs scored in the game",
        caption = "Source: MLB Game Logs")
@@ -400,7 +398,7 @@ ggplot(all_games, aes(x = OBP,
   geom_jitter() +
   annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", on_base_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of on-base percentage",
+  labs(title = "Runs scored vs. on-base percentage",
        x = "Game on-base percentage",
        y = "Runs scored in the game",
        caption = "Source: MLB Game Logs")
@@ -422,7 +420,7 @@ ggplot(all_games, aes(x = BOP,
   geom_jitter() +
   annotate("text", x = 0.5, y = 45, label = paste("Pearson correlation =", base_out_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of base-out percentage",
+  labs(title = "Runs scored vs. base-out percentage",
        x = "Game base-out percentage",
        y = "Runs scored in the game",
        caption = "Source: MLB Game Logs")
@@ -445,15 +443,15 @@ Base-out Percentage   | 0.836         | 0.70  | 9.32
 
 Once agian, base-out percentage seems to be most highly correlated with runs scored, and accounts for 70% of the variability in runs scored.  
 
-Once again, the p-value of each these metrics is 0, indicating that each is a significant predictor of runs scored.  The interpretation of the slope and intercept is the same as described for the Hitting Statistics data.  The interesting thing to note is how closely these numbers are to those generated from the Hitting Statistics data.  This increases our confidence in these data and the analysis, i.e., we were able to replicate the results with another dataset.
+Also, the p-value of each these metrics is 0, indicating that each is a significant predictor of runs scored.  The interpretation of the slope and intercept is the same as described for the Hitting Statistics data above.  The interesting thing to note is how closely these numbers are to those generated from the Hitting Statistics data.  This increases our confidence in these data and the analysis, i.e., we were able to replicate the results with another dataset.
 
 
 ## Moneyball
 
 This dataset is different than the previous datasets in that it is already aggregated by team by season.  Thus, the analysis is slightly different in the following ways:
 
-1.  It is not possible to recover the number of outs and bases from this aggregated data, so I cannot compute base-out percentage.  Since batting average, slugging percentage, and on-base percentage are in this dataset, those the metrics I will use for analysis of this dataset.
-2.  This data is aggregated at the season level, and contains the number of runs scored over the course of the season, as well as the number of wins.  So the analysis will focus on the relationship between runs scored and these metrics, as the previous analyses did, but instead of using a logistic model to relate them to the binary outcome of winning or losing, I will create simple linear regression models to examine the relationship between wins and each batting metric.
+1.  It is not possible to recover the number of outs and bases from this aggregated data, so I cannot compute base-out percentage.  Since batting average, slugging percentage, and on-base percentage are in this dataset, I will use those metrics for the analysis of this dataset.
+2.  This data is aggregated at the season level, and contains the number of runs scored over the course of the season, as well as the number of wins.  So the analysis will focus on the relationship between runs scored and these metrics, as the previous analyses did, but at the season instead of game level.  Also, in order to answer my question about the relationship between these metrics and winning/losing, I will create simple linear regression models to examine the relationship between wins and each batting metric for the season.
 
 
 ### Batting Average
@@ -466,7 +464,7 @@ ggplot(moneyball, aes(x = BA,
   geom_jitter() +
     annotate("text", x = 0.225, y = 900, label = paste("Pearson correlation =", batting_average_RS))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of batting average",
+  labs(title = "Runs Scored vs. Batting Average",
        x = "Season Batting Average",
        y = "Runs Scored",
        caption = "Source: Moneyball Dataset")
@@ -487,7 +485,7 @@ ggplot(moneyball, aes(x = BA,
   geom_jitter() +
     annotate("text", x = 0.225, y = 110, label = paste("Pearson correlation =", batting_average_W))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Wins as function of batting average",
+  labs(title = "Wins vs. Batting Average",
        x = "Season Batting Average",
        y = "Wins",
        caption = "Source: Moneyball Dataset")
@@ -511,7 +509,7 @@ ggplot(moneyball, aes(x = SLG,
   geom_jitter() +
    annotate("text", x = 0.33, y = 900, label = paste("Pearson correlation =", slugging_pct_RS))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of slugging percentage",
+  labs(title = "Runs Scored vs. Slugging Percentage",
        x = "Season Slugging Percentage",
        y = "Runs Scored",
        caption = "Source: Moneyball Dataset")
@@ -533,7 +531,7 @@ ggplot(moneyball, aes(x = SLG,
   geom_jitter() +
    annotate("text", x = 0.33, y = 110, label = paste("Pearson correlation =", slugging_pct_W))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Wins as function of slugging percentage",
+  labs(title = "Wins vs. Slugging Percentage",
        x = "Season Slugging Percentage",
        y = "wins",
        caption = "Source: Moneyball Dataset")
@@ -559,7 +557,7 @@ ggplot(moneyball, aes(x = OBP,
   geom_jitter() +
    annotate("text", x = 0.29, y = 900, label = paste("Pearson correlation =", on_base_pct_RS))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored as function of on-base percentage",
+  labs(title = "Runs Scored vs. On-base Percentage",
        x = "Season On-base Percentage",
        y = "Runs Scored",
        caption = "Source: Moneyball Dataset")
@@ -581,7 +579,7 @@ ggplot(moneyball, aes(x = OBP,
   geom_jitter() +
   annotate("text", x = 0.29, y = 110, label = paste("Pearson correlation =", on_base_pct_W))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Wins as function of on-base percentage",
+  labs(title = "Wins vs. On-base Percentage",
        x = "Season On-base Percentage",
        y = "Wins",
        caption = "Source: Moneyball Dataset")
@@ -614,33 +612,33 @@ Batting Average       | 0.409         | 0.17  | 362.83
 Slugging Percentage   | 0.401         | 0.16  | 138.29
 On-base Percentage    | 0.482         | 0.23  | 367.75
 
-As these data are aggregated by team by season, the interpretation of the analysis will differ.  The first thing to note is that the distribution of each metric is much tighter than the data aggregated at the game level due to the sample size.  At the game level, we expect to see much more variation due to the smaller number of at bats that each team gets in a game versus the entire season.  The tighter distributions means less variability, and the correlations for these metrics at the season level are considerably higher than at the game level, as are the corresponding values of the coefficient of determination.  
+As these data are aggregated by team by season, the interpretation of the analysis will differ.  The first thing to note is that the distribution of each metric is much tighter than the data aggregated at the game level due to the sample size.  At the game level, we expect to see much more variation due to the smaller number of at bats that each team gets in a game versus the entire season.  The tighter distributions means less variability, and the correlations for these metrics at the season level are consistent with but higher than at the game level, as are the corresponding values of the coefficient of determination.  
 
-In each of the linear models, the parameters are significant, and the intercepts are negative and thus do not have a meaningful interpretation.  The slopes are much larger due to the target variable being at the season versus game level.  Similar to our analysis of the previous two datasets at the game level, however, we see a similar relationship between runs scored and each of the metrics, with slugging percentage more highly correlated than on-base perentage and then followed by batting average.  As these data were already aggregated and did not contain base-out percentage, that analysis was not possible with this data.  However, given the order of the correlations for the other three metrics was the same at the season level as at the game level, we can hypothesize that base-out percentage would have been more highly correlated to runs scored than the other metrics at the season level as well.
+In each of the linear models, the parameters are significant, and the intercepts are negative and thus do not have a meaningful interpretation.  The slopes are much larger due to the target variable being at the season versus game level.  Like our analysis of the previous two datasets at the game level, however, we see a similar relationship between runs scored and each of the metrics, with slugging percentage more highly correlated than on-base percentage,  followed by batting average.  As these data were already aggregated and did not contain base-out percentage, that analysis was not possible with this data.  However, given the order of the correlations for the other three metrics was the same at the season level as at the game level, we can hypothesize that base-out percentage would have been more highly correlated to runs scored than the other metrics at the season level as well.
 
-Looking at the relationshiop between these metrics and the number of wins, there are two interesting observations:
+Looking at the relationship between these metrics and the number of wins, there are two interesting observations:
 
 1.  We see much more variability in the number of wins as they relate to each of the metrics, and thus the correlations are much lower, indicating that much more goes into winning a game than runs scored.  
-2.  We see a reversal in terms of the correlations between slugging percentage and on-base percentage.  This was the insight that spurred the Oakland A's to value on-base percentage over slugging percentage when using this data.  
+2.  We see a reversal in terms of the correlations between slugging percentage and on-base percentage, i.e. on-base percentage is more highly correlated with the number of wins, followed by slugging percentage and finally batting average.  This was the insight that spurred the Oakland A's to value on-base percentage over slugging percentage when using this data.  
 
-Additional analysis that could be done with this data includes creating a logistic model for each of the game level datasets to determine which metrics best predict winning or losing.  This would allow us to test the hypothesis formed using the Moneyball data and season wins that base-out percentage may be more predictive of winning or losing than any of the other traditional hitting metrics.
+Additional analysis that could be done with this data includes creating a logistic model for each of the game level datasets to determine which metrics best predict winning or losing.  This would allow us to test the hypothesis formed using the Moneyball data that base-out percentage may be more predictive of runs scored and winning or losing than any of the other traditional hitting metrics.
 
 # Implications
-In the spirit of the Moneyball story, I will frame the implications of this analysis for a general manager of a baseball team.  In that situation, the general manager was looking for a competitive edge use data as he had a very limited budget.  The value of power hitting and a metric like slugging percentage for helping teams win was well-known, and power hitters were highly valued and expensive.  That is, the GM for the Oakland A's did not have the option of signing players with an outstanding batting average or slugging percentage as he could not afford these players.  The insight that the data provided was that on-base percentage was better at predicting runs scored than batting average and nearly as good as slugging percentage.  Furthermore, it was a better predictor of winning than either batting average or slugging percentage.  The reason this insight was so key was that on-base percentage was not highly valued among other baseball teams.  A walk was undervalued in baseball at this time, and so the GM of the Oakland A's identified players who had a high on-base percentage, but were undervalued in the market based on conventional metric and wisdom.  
+In the spirit of the Moneyball story, I will frame the implications of this analysis for a general manager of a baseball team.  In the Moneyball story, the general manager was looking for a competitive edge using data, as he had a very limited budget.  The value of power hitting and a metric like slugging percentage for helping teams win was well-known, and power hitters were highly valued and expensive.  The GM for the Oakland A's did not have the option of signing players with an outstanding batting average or slugging percentage as he could not afford these players.  The insight that the data provided was that on-base percentage was better at predicting runs scored than batting average and nearly as good as slugging percentage.  Furthermore, it was a better predictor of winning than either batting average or slugging percentage.  The reason this insight was so key was that on-base percentage was not highly valued among other baseball teams at this time.  A walk was undervalued, and so the GM of the Oakland A's identified players who had a high on-base percentage, but were undervalued in the market based on conventional metrics and wisdom.  
 
 For some reason, base-out percentage is not a common metric in baseball at this time, in spite of its introduction over 40 years ago.  The main implication of this analysis is that it is a metric that is more highly correlated with runs scored than any of the other metrics included in this analysis.  As it is relatively unknown and/or unused, a logical next step would be to calculate the base-out percentage of current players in the Major Leagues, and determine whether they are undervalued.  It could be that players with a high base-out percentage are already highly valued based on other metrics, and thus this insight is not actionable in the same way that on-base percentage was in the Moneyball story.  However, at the very least it seems that this analysis should be done if it has not been already.
 
 
 # Limitations
 
-There are other offensive metric that could be included in this analysis that I was not aware of until after I'd completed my data transformation, such as OPS, which is on-base percentage plus slugging percentage. Indeed, there are likely many more metrics that I'm still unaware of that could be further explored.  The field of analytics is likely more mature in baseball than any other sport, and present analysis merely scratched the surface of what is possible. 
+There are other offensive metric that could be included in this analysis that I was not aware of until after I'd completed my data transformation, such as OPS, which is on-base percentage plus slugging percentage. Indeed, there are likely many more metrics that I'm still unaware of that could be further explored.  The field of analytics is likely more mature in baseball than any other sport, and the present analysis merely scratched the surface of what is possible. 
 
-Furthermore, runs scored is only half of winning.  No matter how many runs a team scores, they will still lose if their opponent scores more runs.  Thus, to try to use these hitting metrics to predict winning or losing, it is likely insufficient to relate a metric like batting average to winning or losing a game.  That is, a team's batting average in a game may not be predictive of winning or losing, but rather the team's batting average relative their opponent's batting average in the same game.  Creating metrics for the differences between team hitting metrics for a game would like be more predictive of winning or losing, as it takes into account how well the other team batted as well. Another way to get at this would be to perform a hypothesis test on the difference of means of each of these metrics between winning and losing teams.
+Furthermore, runs scored is only half of winning.  No matter how many runs a team scores, they will still lose if their opponent scores more runs.  Thus, it is likely insufficient to try to use these hitting metrics to predict winning or losing.  That is, a team's batting average in a game may not be predictive of winning or losing, but rather the team's batting average relative their opponent's batting average in the same game.  Creating metrics for the differences between team hitting metrics for a game would likely be more predictive of winning or losing, as it takes into account how well the other team batted as well. Another way to get at this would be to perform a hypothesis test on the difference of means of each of these metrics between winning and losing teams.
 
 However, while this would be an interesting analysis, it is likely less actionable as there is not a single controllable aspect of the game that influences how both teams hit in a game.  A separate analysis of defensive metrics, especially pitching, is likely needed in order to find actionable insights that would influence winning or losing.  Pitchers are the most valued players in the game due to their ability to influence the number of runs scored by an opponent.  Identifying a metric like base-out percentage for pitchers could lead to more actionable insights. 
 
-A more minor issue is that there should be either 24 or 27 outs per game.  In general, a team gets three outs per inning for nine innings.  However, when the home team is winning in the bottom of the ninth inning, the game is over since the visitiing team has no more at bats and thus the outcome of the game will not be changed by the home team's at bats.  The issue, is that when calculating outs in my data, I found a number of instances where the number of outs was not 24 or 27, but 25, 26, or 28.  
+A more minor issue is that there should be either 24 or 27 outs per game.  In general, a team gets three outs per inning for nine innings.  However, when the home team is winning in the bottom of the ninth inning, the game is over since the visitiing team has no more at bats and thus the outcome of the game will not be changed by the home team's at bats.  The issue, is that when calculating outs in my data, I found a number of instances where the number of outs was not 24 or 27, but 25, 26, or 28. I double checked my computation for outs, and it was corrrect.  I also checked the distribution of outs and found that 24 and 27 were most common. Nonetheless, this is certainly an issue I would need to look into further as it is part of the computation for base-out percentage.
 
 # Concluding Remarks
 
-Baseball has long been called a game of numbers due to many statistics that are tracked and computed for every aspect of the game.  While base-out percentage is the most predictive metric of runs scored, given the current state of baseball analytics, there must be some reason that it is relatively unknown and/or used. Indeed, opportunities to exploit an undervalued metric like on-base percentage are likely impossible in baseball today. Rather, understanding how to value players based on these various metrics is likely a focus of current baseball analytics, although this is just a hypothesis.  That is, understanding the relationship between winning and earnings, and the relationship between a variety of metrics and winning would form a basis, in conjunction with market value for similar players, for contract negotiations.  I recently heard of a European soccer player who hired a team of data scientists to evaluate his financial impact to his team and used it as basis for negotiating a new contract.  It may be that soccer is behind baseball in terms of its analytics maturity, as I would think that every general manager in baseball has already done this analysis for each of his players, if not for every player in the league.
+Baseball has long been called a game of numbers due to many statistics that are tracked and computed for every aspect of the game.  While base-out percentage is the most predictive metric of runs scored, given the current state of baseball analytics, there must be some reason that it is relatively unknown and/or used. Indeed, opportunities to exploit an undervalued metric like on-base percentage are likely impossible in baseball today. Rather, understanding how to value players based on these various metrics is probably a focus of current baseball analytics, although this is just a hypothesis.   Understanding the relationship between winning and earnings, and the relationship between a variety of metrics and winning would form a basis, in conjunction with market value for similar players, for contract negotiations.  I recently heard of a European soccer player who hired a team of data scientists to evaluate his financial impact to his team and used it as basis for negotiating a new contract.  It may be that soccer is behind baseball in terms of its analytics maturity, as I would think that every general manager in baseball has already done this analysis for each of his players, if not for every player in the league.
