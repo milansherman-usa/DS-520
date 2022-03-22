@@ -12,6 +12,7 @@ library(janitor)
 library(naniar)
 library(jtools)
 library(kableExtra)
+library(papaja)
 ```
 # Introduction
 
@@ -52,7 +53,7 @@ moneyball <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/Baseball Datasets/
 
 The analysis is organized by dataset, and finding are synthesized in the implications section.  In this section I analyze the relationship between the number of runs scored and various hitting metrics, including batting average, slugging percentage, on-base percentage, and base-out percentage.  For each metric, I generate a scatterplot, compute the Pearson Correlation Coefficient, and generate a linear model.  For the third dataset, I generate a linear model using each metric to see how predictive of number of wins in a season each metric is.  Before integrating across datasets, I will give a brief summary of the analysis results for each dataset.  
 
-## Hitting Stats 1901-2021
+## Hitting Statistics 1901-2021
 
 ```{r, warning=FALSE, message =FALSE , echo=FALSE}
 by_game_pct <- hitting %>% 
@@ -100,9 +101,10 @@ ggplot(by_game_pct, aes(x = BA,
                         y = R)) +
   geom_point() +
   geom_jitter() +
+  theme_apa() +
   annotate("text", x = 0.1, y = 25, label = paste("Pearson correlation =", batting_average))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. batting average",
+  labs(title = "Runs scored vs. Batting Average",
        x = "Game Batting Average",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -111,7 +113,13 @@ ggplot(by_game_pct, aes(x = BA,
 
 ```{r}
 hit_BA_lm <- lm(R ~ BA, data = by_game_pct)
-summ(hit_BA_lm)
+
+apa_BA <- apa_print(hit_BA_lm)
+
+apa_table(
+  apa_BA$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Batting Average."
+)
 ```
 
 
@@ -123,9 +131,10 @@ ggplot(by_game_pct, aes(x = Slug,
                         y = R)) +
   geom_point() +
   geom_jitter() +
-    annotate("text", x = 0.15, y = 25, label = paste("Pearson correlation =", slugging_pct))+
+  theme_apa()+
+    annotate("text", x = 0.18, y = 25, label = paste("Pearson correlation =", slugging_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. slugging percentage",
+  labs(title = "Runs scored vs. Slugging Percentage",
        x = "Game Slugging Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -135,7 +144,13 @@ ggplot(by_game_pct, aes(x = Slug,
 
 ```{r}
 hit_slug_lm <- lm(R ~ Slug, data = by_game_pct)
-summ(hit_slug_lm)
+
+apa_slug <- apa_print(hit_slug_lm)
+
+apa_table(
+  apa_slug$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Slugging Percentage."
+)
 ```
 
 
@@ -147,9 +162,10 @@ ggplot(by_game_pct, aes(x = OBP,
                         y = R)) +
   geom_point() +
   geom_jitter() +
+  theme_apa() +
   annotate("text", x = 0.1, y = 25, label = paste("Pearson correlation =", on_base_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. on-base percentage",
+  labs(title = "Runs scored vs. On-base Percentage",
        x = "Game On-base Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -158,7 +174,14 @@ ggplot(by_game_pct, aes(x = OBP,
 
 ```{r, echo=FALSE}
 hit_OBP_lm <- lm(R ~ OBP, data = by_game_pct)
-summ(hit_OBP_lm)
+
+apa_OBP <- apa_print(hit_OBP_lm)
+
+apa_table(
+  apa_OBP$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of On-base Percentage."
+)
+
 ```
 
 
@@ -172,7 +195,7 @@ ggplot(by_game_pct, aes(x = BOP,
   geom_jitter() +
   annotate("text", x = 0.5, y = 25, label = paste("Pearson correlation =", base_out_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. base-out percentage",
+  labs(title = "Runs scored vs. Base-out Percentage",
        x = "Game Base-out Percentage",
        y = "Runs Scored",
        caption = "Source: Hitting Statistics 1901-2021")
@@ -181,7 +204,13 @@ ggplot(by_game_pct, aes(x = BOP,
 
 ```{r}
 hit_BOP_lm <- lm(R ~ BOP, data = by_game_pct)
-summ(hit_BOP_lm)
+
+apa_hit_BOP_lm <- apa_print(hit_BOP_lm)
+
+apa_table(
+  apa_hit_BOP_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of On-base Percentage."
+)
 ```
 \newpage
 
@@ -355,7 +384,7 @@ ggplot(all_games, aes(x = BA,
   geom_jitter() +
   annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", BA_gl))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. batting average",
+  labs(title = "Runs scored vs. Batting Average",
        x = "Game Batting Average",
        y = "Runs Scored",
        caption = "Source: MLB Game Logs")
@@ -363,7 +392,13 @@ ggplot(all_games, aes(x = BA,
 
 ```{r}
 gl_BA_lm <- lm(R ~ BA, data = all_games)
-summ(gl_BA_lm)
+
+apa_gl_BA_lm <- apa_print(gl_BA_lm)
+
+apa_table(
+  apa_gl_BA_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Batting Average."
+)
 ```
 
 
@@ -375,9 +410,9 @@ ggplot(all_games, aes(x = Slug,
                         y = R)) +
   geom_point() +
   geom_jitter() +
-  annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", slugging_pct))+
+  annotate("text", x = 0.17, y = 40, label = paste("Pearson correlation =", slugging_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. slugging percentage",
+  labs(title = "Runs scored vs. Slugging Percentage",
        x = "Game slugging percentage",
        y = "Runs scored in the game",
        caption = "Source: MLB Game Logs")
@@ -385,7 +420,13 @@ ggplot(all_games, aes(x = Slug,
 
 ```{r}
 gl_slug_lm <- lm(R ~ Slug, data = all_games)
-summ(gl_slug_lm)
+
+apa_gl_slug_lm <- apa_print(gl_slug_lm)
+
+apa_table(
+  apa_gl_slug_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Slugging Percentage."
+)
 ```
 
 ### On-base Percentage
@@ -398,7 +439,7 @@ ggplot(all_games, aes(x = OBP,
   geom_jitter() +
   annotate("text", x = 0.15, y = 45, label = paste("Pearson correlation =", on_base_pct))+
   geom_smooth(method='lm', formula= y~x)+
-  labs(title = "Runs scored vs. on-base percentage",
+  labs(title = "Runs scored vs. On-base Percentage",
        x = "Game on-base percentage",
        y = "Runs scored in the game",
        caption = "Source: MLB Game Logs")
@@ -407,7 +448,13 @@ ggplot(all_games, aes(x = OBP,
 ```{r}
 
 gl_OBP_lm <- lm(R ~ OBP, data = all_games)
-summ(gl_OBP_lm)
+
+apa_gl_OBP_lm <- apa_print(gl_OBP_lm)
+
+apa_table(
+  apa_gl_OBP_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of On-base Percentage."
+)
 ```
 
 ### Base-out Percentage
@@ -428,7 +475,13 @@ ggplot(all_games, aes(x = BOP,
 
 ```{r}
 gl_BOP_lm <- lm(R ~ BOP, data = all_games)
-summ(gl_BOP_lm)
+
+apa_gl_BOP_lm <- apa_print(gl_BOP_lm)
+
+apa_table(
+  apa_gl_BOP_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Base-out Percentage."
+)
 ```
 \newpage
 
@@ -472,7 +525,13 @@ ggplot(moneyball, aes(x = BA,
 
 ```{r}
 mb_BA_RS_lm <- lm(RS ~ BA, data = moneyball)
-summ(mb_BA_RS_lm)
+
+apa_mb_BA_RS_lm <- apa_print(mb_BA_RS_lm)
+
+apa_table(
+  apa_mb_BA_RS_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Batting Average."
+)
 ```
 
 
@@ -495,7 +554,12 @@ ggplot(moneyball, aes(x = BA,
 ```{r}
 mb_BA_W_lm <- lm(W ~ BA, data = moneyball)
 
-summ(mb_BA_W_lm)
+apa_mb_BA_W_lm <- apa_print(mb_BA_W_lm)
+
+apa_table(
+  apa_mb_BA_W_lm $table
+  , caption = "Linear Regression Results for Wins as a Function of Batting Average."
+)
 ```
 
 
@@ -519,7 +583,12 @@ ggplot(moneyball, aes(x = SLG,
 ```{r}
 mb_slug_RS_lm <- lm(RS ~ SLG, data = moneyball)
 
-summ(mb_slug_RS_lm)
+apa_mb_slug_RS_lm <- apa_print(mb_slug_RS_lm)
+
+apa_table(
+  apa_mb_slug_RS_lm$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of Slugging Percentage."
+)
 ```
 
 ```{r, echo=FALSE}
@@ -543,7 +612,12 @@ ggplot(moneyball, aes(x = SLG,
 ```{r}
 mb_slug_W_lm <- lm(W ~ SLG, data = moneyball)
 
-summ(mb_slug_W_lm)
+apa_mb_slug_W_lm<- apa_print(mb_slug_W_lm)
+
+apa_table(
+  apa_mb_slug_W_lm$table
+  , caption = "Linear Regression Results for Wins as a Function of Slugging Percentage."
+)
 ```
 
 
@@ -566,7 +640,12 @@ ggplot(moneyball, aes(x = OBP,
 ```{r}
 mb_OBP_RS_lm <- lm(RS ~ OBP, data = moneyball)
 
-summ(mb_OBP_RS_lm)
+apa_OBP_mb_RS <- apa_print(mb_OBP_RS_lm)
+
+apa_table(
+  apa_OBP_mb_RS$table
+  , caption = "Linear Regression Results for Runs Scored as a Function of On-base Percentage."
+)
 ```
 
 
@@ -589,7 +668,12 @@ ggplot(moneyball, aes(x = OBP,
 ```{r}
 mb_OBP_W_lm <- lm(W ~ OBP, data = moneyball)
 
-summ(mb_OBP_W_lm)
+apa_OBP_mb <- apa_print(mb_OBP_W_lm)
+
+apa_table(
+  apa_OBP_mb$table
+  , caption = "Linear Regression Results for Wins as a Function of On-base Percentage."
+)
 ```
 
 \newpage

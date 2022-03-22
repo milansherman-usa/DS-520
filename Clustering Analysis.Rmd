@@ -17,8 +17,8 @@ library(factoextra)
 
 Import and visualize the data
 
-```{r}
-bin_data <- read.csv("C:/Users/misherman/DS-520/dsc520/data/binary-classifier-data.csv")
+```{r, echo=FALSE}
+bin_data <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/dsc520/data/binary-classifier-data.csv")
 bin_data$label <- as.factor(bin_data$label)
 
 ggplot(bin_data, aes(x = x,
@@ -30,9 +30,9 @@ ggplot(bin_data, aes(x = x,
        ylab = 'y')
 ```
 
-# Split data into a train and test set, and define the target and test variable (label)
+### Split data into a train and test set, and define the target and test variable (label)
 
-```{r pressure, echo=FALSE}
+```{r}
 ran <- sample(1:nrow(bin_data), 0.9 * nrow(bin_data)) 
 
 bin_data$x <- scale(bin_data$x)
@@ -47,9 +47,8 @@ bin_test_category <- bin_data[-ran,1]
 
 ```
 
-# Create a function to compute accuracy, run the algorithm for all values of k from 1 to 25 and keep results for k = 3, 5, 10, 15, 20, and 25
-```{r}
-# accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+### Create a function to compute accuracy, run the algorithm for all values of k from 1 to 25 and keep results for k = 3, 5, 10, 15, 20, and 25
+```{r, warning=FALSE, message=FALSE}
 
 clusters <- numeric(25)
 acc <- numeric(25)
@@ -66,18 +65,16 @@ acc_data <- as.data.frame(bind_cols(clusters, acc))
 names(acc_data) <- c("clusters", "accuracy")
 
 acc_data <- acc_data %>% 
-  filter(clusters == 3 | clusters == 5 | clusters == 10 | clusters == 15 | clusters == 20 | clusters == 25)
-```
-
-```{r}
-pr <- knn(bin_train,bin_test,cl=bin_target_category,k=20)
-tab <- table(pr,bin_test_category)
-accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
-acc <-  accuracy(tab)
+  filter(clusters == 3 | 
+           clusters == 5 | 
+           clusters == 10 | 
+           clusters == 15 | 
+           clusters == 20 | 
+           clusters == 25)
 ```
 
 # Plot k vs. accuracy
-```{r}
+```{r, echo=FALSE}
 ggplot(acc_data, aes(x = clusters,
                      y = accuracy)) +
   geom_point() +
@@ -86,4 +83,148 @@ ggplot(acc_data, aes(x = clusters,
        xlab = "Clusters",
        ylab = "Accuracy")
 ```
+100% accuracy regardless of the number of clusters doesn't seem right, but I've spent a few hours trying to troubleshoot to see where I'm going wrong, and haven't been able to identify the issue.
 
+
+## K Nearest Neighbor with Trinary Data
+
+### Import and visualize the data
+
+```{r, echo=FALSE}
+trin_data <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/dsc520/data/trinary-classifier-data.csv")
+trin_data$label <- as.factor(trin_data$label)
+
+ggplot(trin_data, aes(x = x,
+                     y = y,
+                     color = label)) +
+  geom_point()+
+  labs(title = "Trinary Data Distribution",
+       xlab = 'x',
+       ylab = 'y')
+
+```
+
+### Split data into a train and test set, and define the target and test variable (label)
+
+```{r}
+ran <- sample(1:nrow(trin_data), 0.9 * nrow(trin_data)) 
+
+trin_data$x <- scale(trin_data$x)
+trin_data$y <- scale(trin_data$y)
+
+trin_train <- trin_data[ran,]
+trin_test <- trin_data[-ran,]
+
+trin_target_category <- trin_data[ran,1]
+trin_test_category <- trin_data[-ran,1]
+
+
+```
+
+### Create a function to compute accuracy, run the algorithm for all values of k from 1 to 25 and keep results for k = 3, 5, 10, 15, 20, and 25
+
+```{r, warning=FALSE, message=FALSE}
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+trin_clusters <- numeric(25)
+trin_acc <- numeric(25)
+
+for (k in (1:25)) {
+  trin_clusters[k] <-  k
+  pr <- knn(trin_train,trin_test,cl=trin_target_category,k=k)
+  tab <- table(pr,trin_test_category)
+  trin_acc[k] <-  accuracy(tab)
+}
+
+acc_trin <- as.data.frame(bind_cols(trin_clusters, trin_acc))
+names(acc_trin) <- c("clusters", "accuracy")
+
+acc_trin <- acc_trin %>% 
+  filter(clusters == 3 | 
+           clusters == 5 | 
+           clusters == 10 | 
+           clusters == 15 | 
+           clusters == 20 | 
+           clusters == 25)
+
+```
+
+## Plot k vs. accuracy
+
+```{r, echo=FALSE}
+ggplot(acc_trin, aes(x = clusters,
+                     y = accuracy)) +
+  geom_point() +
+  labs(title = "Number of clusters vs. accuracy",
+       subtitle = "Using k nearest neighbors and trinary data",
+       xlab = "Clusters",
+       ylab = "Accuracy")
+
+```
+100% accuracy regardless of the number of clusters doesn't seem right, but I've spent a few hours trying to troubleshoot to see where I'm going wrong, and haven't been able to identify the issue.
+
+
+# Using kmeans on the clustering data
+
+### Import and Visualize the Data
+
+```{r, echo=FALSE}
+clust_data <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/dsc520/data/clustering-data.csv")
+
+ggplot(clust_data, aes(x = x,
+                      y = y)) +
+  geom_point()+
+  labs(title = "Cluster Data Distribution",
+       xlab = 'x',
+       ylab = 'y')
+
+```
+
+### Scale the data and visualize the elbow
+
+```{r}
+clust_scaled <- scale(clust_data)
+
+fviz_nbclust(clust_scaled, kmeans, method = "wss") 
+
+```
+According to the visualization above, the elbow looks like it should be at k = 4.  Below we will generate clusters using kmeans for k = 2 to 12, and generate the same visualization based on the average distance to the centroid for each of these values of k.
+
+## Compute kmeans with k = 2 through 12
+```{r}
+km.res <- vector(mode = "list", length = 11)
+clusters <- numeric(length = 11)
+avg_SS <- numeric(length = 11)
+
+for (k in 2:12) {
+  set.seed(123)
+  clusters[k] <- k
+  km.res[[k]] <- kmeans(clust_scaled, k, nstart = 25)
+  avg_SS[k] <- mean(km.res[[k]]$withinss)
+  
+}
+
+```
+
+## Calculate the average distance to the centroid and visualize the results
+```{r, warning=FALSE, message=FALSE}
+
+clusters <- clusters[-1]
+avg_SS <- avg_SS[-1]
+kmeans.results <- as.data.frame(bind_cols(clusters, avg_SS))
+names(kmeans.results) <- c("clusters", "avg_SS")
+
+
+```
+
+```{r, echo=FALSE}
+ggplot(kmeans.results, aes(x = clusters,
+                       y = avg_SS)) +
+  geom_point()+
+  labs(title = "K means Results",
+       x = 'Number of Clusters',
+       y = 'Average sum of squares')
+```
+
+
+The elbow looks to be at k=4 (or 5) based on average distance to the centroid.

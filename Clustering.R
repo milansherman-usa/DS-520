@@ -3,7 +3,7 @@ library(class)
 library(factoextra)
 
 
-bin_data <- read.csv("C:/Users/misherman/DS-520/dsc520/data/binary-classifier-data.csv")
+bin_data <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/dsc520/data/binary-classifier-data.csv")
 bin_data$label <- as.factor(bin_data$label)
 
 ggplot(bin_data, aes(x = x,
@@ -56,7 +56,7 @@ ggplot(acc_data, aes(x = clusters,
 
 
 
-trin_data <- read.csv("C:/Users/misherman/DS-520/dsc520/data/trinary-classifier-data.csv")
+trin_data <- read.csv("C:/Users/milan/Documents/GitHub/DS-520/dsc520/data/trinary-classifier-data.csv")
 trin_data$label <- as.factor(trin_data$label)
 
 ggplot(trin_data, aes(x = x,
